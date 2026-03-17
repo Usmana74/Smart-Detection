@@ -48,9 +48,6 @@ function SetupMessage() {
 }
 
 const App = () => {
-  if (!import.meta.env.VITE_SUPABASE_URL) {
-    return <SetupMessage />;
-  }
 
   return (
     <ErrorBoundary>
