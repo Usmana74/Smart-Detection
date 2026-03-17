@@ -4,12 +4,14 @@ const MODELS = {
   medical: "nickmuchi/vit-finetuned-chest-xray",
 };
 export async function classifyImage(imageFile, mode = "general") {
+  const HF_TOKEN = import.meta.env.VITE_HF_TOKEN;
+  if (!HF_TOKEN) throw new Error("Hugging Face token not set. Add VITE_HF_TOKEN in Workspace Settings → Build Secrets.");
   const res = await fetch(
     `https://api-inference.huggingface.co/models/${MODELS[mode]}`,
     {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${import.meta.env.VITE_HF_TOKEN}`,
+        Authorization: `Bearer ${HF_TOKEN}`,
         "Content-Type": "application/octet-stream",
       },
       body: imageFile,

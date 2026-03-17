@@ -1,4 +1,4 @@
-import { supabase } from "./supabaseClient";
+import { supabase } from "@/integrations/supabase/client";
 export async function uploadAndSave(imageFile, mode, results) {
   const fileName = `${Date.now()}-${imageFile.name}`;
   const { error: upErr } = await supabase.storage
