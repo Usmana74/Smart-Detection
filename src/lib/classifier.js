@@ -8,10 +8,11 @@ const MEDICAL_LABELS = {
 };
 
 const MODELS = {
-  general: "google/vit-base-patch16-224",
+  general: "microsoft/resnet-50",
   emotion: "dima806/facial_emotions_image_detection",
   medical: "codewithdark/vit-chest-xray",
 };
+
 
 function mapLabel(label, mode) {
   if (mode === "medical") {
