@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { classifyImage } from "@/lib/classifier";
-import { uploadAndSave, fetchHistory } from "@/lib/actions";
+import { uploadAndSave, fetchHistory, fetchCount } from "@/lib/actions";
 import {
   Upload, Loader2, AlertTriangle, ImageIcon,
   Clock, CheckCircle2, BarChart2, Globe, Smile, Stethoscope
@@ -51,16 +51,20 @@ function CircleRing({ value, color }: { value: number; color: string }) {
 }
 
 export default function VisionApp() {
-  const [mode, setMode]       = useState("general");
-  const [file, setFile]       = useState<File | null>(null);
-  const [preview, setPreview] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<any>(null);
-  const [history, setHistory] = useState<any[]>([]);
-  const [drag, setDrag]       = useState(false);
-  const [error, setError]     = useState("");
+  const [mode, setMode]             = useState("general");
+  const [file, setFile]             = useState<File | null>(null);
+  const [preview, setPreview]       = useState("");
+  const [loading, setLoading]       = useState(false);
+  const [results, setResults]       = useState<any>(null);
+  const [history, setHistory]       = useState<any[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [drag, setDrag]             = useState(false);
+  const [error, setError]           = useState("");
 
-  useEffect(() => { fetchHistory().then(setHistory).catch(() => {}); }, []);
+  useEffect(() => {
+    fetchHistory().then(setHistory).catch(() => {});
+    fetchCount().then(setTotalCount).catch(() => {});
+  }, []);
 
   const pickFile = useCallback((f: File | undefined) => {
     if (!f) return;
@@ -77,7 +81,10 @@ export default function VisionApp() {
       const res = await classifyImage(file, mode);
       setResults(res);
       await uploadAndSave(file, mode, res).catch(() => {});
-      fetchHistory().then(setHistory).catch(() => {});
+      const h = await fetchHistory().catch(() => []);
+      setHistory(h);
+      const c = await fetchCount().catch(() => totalCount);
+      setTotalCount(c);
     } catch (e: any) {
       setError(e.message || "Classification failed.");
     } finally {
@@ -333,15 +340,17 @@ export default function VisionApp() {
         </nav>
 
         {/* Stats */}
-        {history.length > 0 && (
+        {totalCount > 0 && (
           <div className="stats-row">
             <div className="stat-box">
-              <div className="stat-val">{history.length}</div>
+              <div className="stat-val">{totalCount}</div>
               <div className="stat-lbl">Total classifications</div>
             </div>
             <div className="stat-box">
               <div className="stat-val">
-                {(history.reduce((a, r) => a + r.confidence, 0) / history.length * 100).toFixed(0)}%
+                {history.length > 0
+                  ? (history.reduce((a, r) => a + r.confidence, 0) / history.length * 100).toFixed(0) + "%"
+                  : "—"}
               </div>
               <div className="stat-lbl">Avg. confidence</div>
             </div>
@@ -511,9 +520,9 @@ export default function VisionApp() {
               <div className="card-title">
                 <div className="card-title-icon"><Clock size={14} /></div>
                 Recent activity
-                {history.length > 0 && (
+                {totalCount > 0 && (
                   <span style={{ marginLeft: "auto", fontSize: 11, color: "#9590a8", fontWeight: 400 }}>
-                    {history.length} total
+                    {totalCount} total
                   </span>
                 )}
               </div>
