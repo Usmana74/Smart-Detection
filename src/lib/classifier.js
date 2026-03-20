@@ -22,7 +22,7 @@ function mapLabel(label, mode) {
 
 export async function classifyImage(imageFile, mode = "general") {
   const res = await fetch(
-    `/hf-api/models/${MODELS[mode]}`,
+    `/api/classify?model=${MODELS[mode]}`,
     {
       method: "POST",
       headers: {
@@ -52,3 +52,4 @@ export async function classifyImage(imageFile, mode = "general") {
     allResults: mapped,
   };
 }
+
