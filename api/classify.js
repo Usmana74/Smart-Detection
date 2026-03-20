@@ -15,24 +15,19 @@ export default async function handler(req, res) {
     for await (const chunk of req) chunks.push(chunk);
     const body = Buffer.concat(chunks);
 
-    const url = `https://api-inference.huggingface.co/models/${model}`;
-    console.log("Calling HF URL:", url);
-    console.log("Token exists:", !!process.env.HF_TOKEN);
-    console.log("Body size:", body.length);
+    const hfRes = await fetch(
+      `https://router.huggingface.co/hf-inference/models/${model}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.HF_TOKEN}`,
+          "Content-Type": "application/octet-stream",
+        },
+        body,
+      }
+    );
 
-    const hfRes = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.HF_TOKEN}`,
-        "Content-Type": "application/octet-stream",
-      },
-      body,
-    });
-
-    console.log("HF status:", hfRes.status);
     const text = await hfRes.text();
-    console.log("HF response preview:", text.slice(0, 200));
-
     res.setHeader("Content-Type", "application/json");
     return res.status(hfRes.status).send(text);
 
