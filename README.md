@@ -8,7 +8,7 @@ Built with React, Supabase, and the Hugging Face Inference API as a portfolio pr
 
 ## Live Demo
 
->
+>https://smart-detection.vercel.app/
 
 ---
 
