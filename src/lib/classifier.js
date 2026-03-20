@@ -1,27 +1,54 @@
+const MEDICAL_LABELS = {
+  LABEL_0: "No Finding",
+  LABEL_1: "Cardiomegaly",
+  LABEL_2: "Edema",
+  LABEL_3: "Consolidation",
+  LABEL_4: "Pneumonia",
+  LABEL_5: "Pleural Effusion",
+};
+
 const MODELS = {
   general: "google/vit-base-patch16-224",
-  emotion: "trpakov/vit-face-expression",
-  medical: "nickmuchi/vit-finetuned-chest-xray",
+  emotion: "dima806/facial_emotions_image_detection",
+  medical: "codewithdark/vit-chest-xray",
 };
+
+function mapLabel(label, mode) {
+  if (mode === "medical") {
+    return MEDICAL_LABELS[label] ?? label;
+  }
+  return label;
+}
+
 export async function classifyImage(imageFile, mode = "general") {
-  const HF_TOKEN = import.meta.env.VITE_HF_TOKEN;
-  if (!HF_TOKEN) throw new Error("Hugging Face token not set. Add VITE_HF_TOKEN in Workspace Settings → Build Secrets.");
   const res = await fetch(
-    `https://api-inference.huggingface.co/models/${MODELS[mode]}`,
+    `/hf-api/models/${MODELS[mode]}`,
     {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${HF_TOKEN}`,
+        Authorization: `Bearer ${import.meta.env.VITE_HF_TOKEN}`,
         "Content-Type": "application/octet-stream",
       },
       body: imageFile,
     }
   );
-  if (!res.ok) throw new Error(`HF error: ${res.status}`);
+
+  if (!res.ok) {
+    if (res.status === 503) throw new Error("Model is loading, wait 20 seconds and retry.");
+    throw new Error(`HF error: ${res.status}`);
+  }
+
   const results = await res.json();
+  const list = Array.isArray(results) ? results : results[0];
+
+  const mapped = list.map((r) => ({
+    ...r,
+    label: mapLabel(r.label, mode),
+  }));
+
   return {
-    topLabel: results[0].label,
-    confidence: results[0].score,
-    allResults: results,
+    topLabel: mapped[0].label,
+    confidence: mapped[0].score,
+    allResults: mapped,
   };
 }
