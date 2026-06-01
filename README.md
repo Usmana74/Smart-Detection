@@ -1,33 +1,71 @@
-# Smart Detection — Multi-Modal Image Classification App
+# Smart Detection
 
-A full-stack AI web application that classifies images across three domains in real time — general objects, facial emotions, and chest X-ray pathologies.
+> **Production multi-modal Vision Transformer pipeline for real-time image classification across three domains.**
 
-Built with React, Supabase, and the Hugging Face Inference API as a portfolio project demonstrating practical AI integration and full-stack development skills.
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-smart--detection.vercel.app-blue)](https://smart-detection.vercel.app)
+[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript)](https://www.typescriptlang.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
+[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?logo=supabase)](https://supabase.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+**[→ Live at smart-detection.vercel.app](https://smart-detection.vercel.app)**
 
 ---
 
-## Live Demo
+## Overview
 
->https://smart-detection.vercel.app/
+Smart Detection is a full-stack AI application integrating **three Hugging Face Vision Transformer (ViT) models** into a single production pipeline. Upload any image and the system routes it through the appropriate classification head — returning predictions with confidence scores persisted to a PostgreSQL database.
+
+| Mode | Model | Classes | Task |
+|------|-------|---------|------|
+| **General** | `google/vit-base-patch16-224` | 1,000 (ImageNet-1K) | General object classification |
+| **Emotion** | `trpakov/vit-face-expression` | 7 (anger, disgust, fear, happy, neutral, sad, surprise) | Facial emotion recognition |
+| **Medical** | `nickmuchi/vit-finetuned-chest-xray-classification` | CheXpert pathology classes | Chest X-ray pathology detection |
 
 ---
 
-## Screenshots
+## Architecture
 
-<img width="947" height="414" alt="medical" src="https://github.com/user-attachments/assets/7770466d-5385-4497-8792-dc6cee3a153a" />
+```
+┌─────────────────────────────────────────────────────────────┐
+│  React 18 / TypeScript Frontend (Vercel)                    │
+│  Drag-and-drop upload → mode selection → result display     │
+│  Classification history dashboard · Confidence scoring UI   │
+└──────────────────────┬──────────────────────────────────────┘
+                       │ HTTPS (Vercel serverless proxy)
+                       │ [CORS resolved via proxy rewrite]
+                       ▼
+┌─────────────────────────────────────────────────────────────┐
+│  FastAPI Backend                                            │
+│  /predict endpoint → model router → HuggingFace Inference  │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+          ┌────────────┴────────────┐
+          ▼                         ▼
+┌──────────────────┐    ┌──────────────────────────────────┐
+│  Hugging Face    │    │  Supabase PostgreSQL             │
+│  Inference API   │    │  classifications table           │
+│  (3 ViT models)  │    │  Row Level Security (SQL)        │
+└──────────────────┘    │  prediction history persistence  │
+                        └──────────────────────────────────┘
+```
 
+**Key engineering decisions:**
+- **CORS via Vercel serverless proxy** — Hugging Face Inference API does not allow direct browser requests; all model calls are proxied through a Vercel rewrite rule to avoid CORS errors without exposing API keys client-side
+- **Row Level Security** — Supabase PostgreSQL enforces RLS via SQL policies; each user's classification history is isolated at the database level
+- **Binary inference routing** — the frontend mode selector (General / Emotion / Medical) maps to separate model endpoints; no single multi-head model, keeping each ViT specialised and replaceable independently
 
 ---
 
 ## Features
 
-- **Three classification modes** — General objects, Facial emotions, Chest X-ray pathology detection
-- **Real-time AI inference** via Hugging Face Inference API (Vision Transformer models)
-- **Image upload** with drag-and-drop support and live preview
-- **Confidence scoring** with circular progress ring and ranked prediction list
-- **Classification history** stored in Supabase with image thumbnails and timestamps
-- **Dashboard stats** — total classifications, average confidence, last mode used
-- **Responsive layout** — works on desktop and mobile
+- **Drag-and-drop image upload** with instant preview
+- **Three classification modes** — switch between General, Emotion, Medical with a single click
+- **Confidence scoring UI** — visual confidence bar per prediction
+- **Classification history dashboard** — all predictions persisted in Supabase, browsable per session
+- **Responsive mobile layout** — works on all screen sizes
+- **Serverless deployment** — zero cold-start penalty on Vercel edge network
 
 ---
 
@@ -35,137 +73,112 @@ Built with React, Supabase, and the Hugging Face Inference API as a portfolio pr
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | React 18, TypeScript, Vite |
-| Styling | Plain CSS (no framework) |
-| Database | Supabase (PostgreSQL) |
-| Storage | Supabase Storage |
-| AI Models | Hugging Face Inference API |
-| Deployment | Vercel |
+| Frontend | React 18, TypeScript, Tailwind CSS |
+| Backend | FastAPI (Python) |
+| ML Models | Hugging Face Transformers (ViT) |
+| Database | Supabase (PostgreSQL + RLS) |
+| Deployment | Vercel (frontend + serverless proxy) |
+| Auth/Storage | Supabase Row Level Security |
 
 ---
 
-## AI Models Used
+## Local Development
 
-| Mode | Model | Task |
-|------|-------|------|
-| General | `google/vit-base-patch16-224` | 1000-class ImageNet classification |
-| Emotion | `dima806/facial_emotions_image_detection` | 7 facial expression classes |
-| Medical | `codewithdark/vit-chest-xray` | Chest pathology detection (CheXpert) |
+### Prerequisites
+- Node.js 18+
+- Python 3.10+
+- Supabase account (free tier works)
+- Hugging Face API token
 
-All three models use the Vision Transformer (ViT) architecture fine-tuned for their respective domains.
-
----
-
-## Project Structure
-
-```
-src/
-├── lib/
-│   ├── classifier.js     # Hugging Face API calls + label mapping
-│   ├── actions.js        # Supabase storage upload + DB insert/fetch
-│   └── supabaseClient.js # Supabase client initialization
-├── VisionApp.tsx         # Main dashboard component
-└── main.tsx
-```
-
----
-
-## Getting Started
-
-### 1. Clone the repo
+### Frontend
 
 ```bash
-git clone https://github.com/your-username/smart-detection.git
+git clone https://github.com/Usmana74/smart-detection
 cd smart-detection
-```
-
-### 2. Install dependencies
-
-```bash
-npm install --legacy-peer-deps
-```
-
-### 3. Set up Supabase
-
-Create a project at [supabase.com](https://supabase.com) and run this SQL in the SQL Editor:
-
-```sql
-create table classifications (
-  id uuid default gen_random_uuid() primary key,
-  created_at timestamp with time zone default now(),
-  image_url text not null,
-  mode text not null,
-  top_label text not null,
-  confidence float not null,
-  all_results jsonb
-);
-
-alter table classifications disable row level security;
-```
-
-Then go to **Storage** and create a public bucket named `classification-images`.
-
-### 4. Add environment variables
-
-Create a `.env` file in the project root:
-
-```env
-VITE_SUPABASE_URL=your_supabase_project_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-VITE_HF_TOKEN=your_hugging_face_token
-```
-
-- Supabase keys: Project Settings → API
-- HF token: [huggingface.co](https://huggingface.co) → Settings → Access Tokens → New Token (Read)
-
-### 5. Run locally
-
-```bash
+npm install
+cp .env.example .env.local
+# Fill in SUPABASE_URL, SUPABASE_ANON_KEY, HF_API_TOKEN
 npm run dev
 ```
 
-Open [http://localhost:8080](http://localhost:8080)
+### Backend
+
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn main:app --reload
+```
+
+### Environment Variables
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+HF_API_TOKEN=your_huggingface_token
+```
 
 ---
 
-## How It Works
+## Models
 
-1. User selects a classification mode (General / Emotion / Medical)
-2. User uploads an image via drag-and-drop or file picker
-3. On classify, the image is sent as binary to the Hugging Face Inference API
-4. The API returns a ranked list of labels with confidence scores
-5. Results are displayed in the dashboard with a confidence ring and bar chart
-6. The image is uploaded to Supabase Storage and the result is saved to the database
-7. Classification history is fetched and displayed in the Recent Activity panel
+### General Classification — ViT-Base-Patch16-224
+Google's base ViT model fine-tuned on ImageNet-1K. 86M parameters, patch size 16×16, input resolution 224×224. Returns top-5 predictions with confidence scores across 1,000 object categories.
 
----
+### Facial Emotion Recognition — ViT Face Expression
+ViT fine-tuned on facial expression datasets. Classifies into 7 universal emotion categories (Ekman's basic emotions). Input: any face image; pre-processing handles detection and crop implicitly.
 
-## Deployment
+### Chest X-Ray Pathology — CheXpert ViT
+ViT fine-tuned on the CheXpert chest X-ray dataset. Detects common thoracic pathologies. Intended for research and educational demonstration only — **not validated for clinical use**.
 
-This project is deployed on Vercel. To deploy your own:
-
-1. Push the repo to GitHub
-2. Go to [vercel.com](https://vercel.com) → New Project → Import your repo
-3. Add the three environment variables in Vercel's project settings
-4. Deploy
+> ⚠️ **Medical disclaimer**: The chest X-ray classification feature is a research demonstration. It is not intended for clinical diagnosis and has not been validated for medical use.
 
 ---
 
-## Disclaimer
+## Limitations & Future Work
 
-The medical classification mode is intended for educational and demonstration purposes only. It is **not** suitable for clinical use or real medical diagnosis.
+- [ ] Add confidence calibration — raw softmax scores are not well-calibrated probabilities
+- [ ] Multi-image batch processing
+- [ ] Model performance metrics dashboard (per-class accuracy on validation sets)
+- [ ] Replace Hugging Face Inference API with self-hosted ONNX models for lower latency
+- [ ] Add GradCAM visualisation — highlight which image regions drove the prediction
+
+---
+
+## Repository Structure
+
+```
+smart-detection/
+├── src/
+│   ├── components/        # React UI components
+│   ├── pages/             # Next.js / React Router pages
+│   └── lib/               # Supabase client, API utilities
+├── backend/
+│   ├── main.py            # FastAPI app + /predict endpoint
+│   └── requirements.txt
+├── public/
+├── .env.example
+├── vercel.json            # Proxy rewrite rules (CORS fix)
+└── README.md
+```
+
+---
+
+## Citation
+
+```bibtex
+@misc{ahmad2026smartdetection,
+  author = {Ahmad, Mohammad Usman},
+  title  = {Smart Detection: Multi-Modal Vision Transformer Classification Pipeline},
+  year   = {2026},
+  url    = {https://github.com/Usmana74/smart-detection}
+}
+```
 
 ---
 
 ## Author
 
-**Usman Ahmad**
+**Mohammad Usman Ahmad**
+BS Computer Science (AI/CV), PMAS Arid Agriculture University, Pakistan · CGPA: 3.8/4.0
 
-
-[LinkedIn](https://linkedin.com/in/your-profile) · [GitHub](https://github.com/your-username)
-
----
-
-## License
-
-MIT
+[Live Demo](https://smart-detection.vercel.app) · [GitHub](https://github.com/Usmana74) · [LinkedIn](https://linkedin.com/in/usman-ahmad-297b63262) · [PyPI — dataaudit](https://pypi.org/project/dataaudit-tool/)
